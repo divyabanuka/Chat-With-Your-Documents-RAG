@@ -203,9 +203,6 @@ Document → Chunking → Embeddings → Vector DB → Retrieval → LLM → Ans
 
 ## 🌐 Links
 
-Live Application:
-https://scaqyws2u4op.streamlit.app/
-
 GitHub Repository:
 https://github.com/divyabanuka/Chat-With-Your-Documents-RAG
 

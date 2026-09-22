@@ -73,9 +73,6 @@ Document → Text Extraction → Chunking → Embeddings → ChromaDB → Retrie
 
 The project screenshots are available in the GitHub repository.
 
-👉 View Project Screenshots:
-./project%20screenshots
-
 The screenshots demonstrate:
 
 - 📄 Document upload

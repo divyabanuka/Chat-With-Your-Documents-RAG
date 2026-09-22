@@ -88,13 +88,6 @@ Document → Text Extraction → Chunking → Embeddings → ChromaDB → Retrie
         ↓
 💬 Final Answer
 
-## 📂 Project Structure
-
-Chat-With-Your-Documents-RAG/
-│
-├── app.py
-├── requirements.txt
-└── README.md
 
 ## ⚙️ Installation
 

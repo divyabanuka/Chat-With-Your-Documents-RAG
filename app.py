@@ -1,11 +1,14 @@
 import streamlit as st
 import numpy as np
+import chromadb
 from pypdf import PdfReader
 from google import genai
 from google.genai import types
 
 
-# ---------------- PAGE CONFIG ----------------
+# ==================================================
+# PAGE CONFIG
+# ==================================================
 
 st.set_page_config(
     page_title="Chat With Your Documents",
@@ -14,20 +17,45 @@ st.set_page_config(
 )
 
 
-# ---------------- TITLE ----------------
+# ==================================================
+# TITLE
+# ==================================================
 
 st.title("📚 Chat With Your Documents")
 st.caption("RAG-powered document question answering")
 
 
-# ---------------- GEMINI API ----------------
+# ==================================================
+# GEMINI API
+# ==================================================
 
 API_KEY = st.secrets["GEMINI_API_KEY"]
 
 client = genai.Client(api_key=API_KEY)
 
 
-# ---------------- TEXT EXTRACTION ----------------
+# ==================================================
+# CHROMA VECTOR DATABASE
+# ==================================================
+
+if "chroma_client" not in st.session_state:
+
+    st.session_state.chroma_client = chromadb.Client()
+
+    st.session_state.collection = (
+        st.session_state.chroma_client
+        .get_or_create_collection(
+            name="document_collection"
+        )
+    )
+
+
+collection = st.session_state.collection
+
+
+# ==================================================
+# EXTRACT TEXT FROM DOCUMENT
+# ==================================================
 
 def extract_text(uploaded_file):
 
@@ -38,6 +66,7 @@ def extract_text(uploaded_file):
         text = ""
 
         for page in reader.pages:
+
             page_text = page.extract_text()
 
             if page_text:
@@ -50,9 +79,15 @@ def extract_text(uploaded_file):
         return uploaded_file.read().decode("utf-8")
 
 
-# ---------------- TEXT CHUNKING ----------------
+# ==================================================
+# TEXT CHUNKING
+# ==================================================
 
-def create_chunks(text, chunk_size=1000, overlap=200):
+def create_chunks(
+    text,
+    chunk_size=1000,
+    overlap=200
+):
 
     chunks = []
 
@@ -65,38 +100,39 @@ def create_chunks(text, chunk_size=1000, overlap=200):
         chunk = text[start:end]
 
         if chunk.strip():
-            chunks.append(chunk.strip())
+
+            chunks.append(
+                chunk.strip()
+            )
 
         start += chunk_size - overlap
 
     return chunks
 
 
-# ---------------- CREATE EMBEDDING ----------------
+# ==================================================
+# CREATE GEMINI EMBEDDING
+# ==================================================
 
 def create_embedding(text):
 
     result = client.models.embed_content(
+
         model="gemini-embedding-2",
+
         contents=text,
+
         config=types.EmbedContentConfig(
             output_dimensionality=768
         )
     )
 
-    return np.array(result.embeddings[0].values)
+    return result.embeddings[0].values
 
 
-# ---------------- COSINE SIMILARITY ----------------
-
-def cosine_similarity(a, b):
-
-    return np.dot(a, b) / (
-        np.linalg.norm(a) * np.linalg.norm(b)
-    )
-
-
-# ---------------- DOCUMENT UPLOAD ----------------
+# ==================================================
+# DOCUMENT UPLOAD
+# ==================================================
 
 uploaded_file = st.file_uploader(
     "📄 Upload a PDF or TXT document",
@@ -106,34 +142,75 @@ uploaded_file = st.file_uploader(
 
 if uploaded_file:
 
-    st.success(
-        f"Uploaded: {uploaded_file.name}"
+    # ------------------------------------------------
+    # Detect new document
+    # ------------------------------------------------
+
+    file_id = (
+        uploaded_file.name,
+        uploaded_file.size
     )
 
-    # Extract text
-    document_text = extract_text(uploaded_file)
+    if (
+        "current_file" not in st.session_state
+        or
+        st.session_state.current_file != file_id
+    ):
 
-    if not document_text.strip():
+        # Store current file
+        st.session_state.current_file = file_id
 
-        st.error(
-            "❌ Could not extract text from this document."
+        # Clear old vectors
+        try:
+
+            st.session_state.chroma_client.delete_collection(
+                name="document_collection"
+            )
+
+        except Exception:
+            pass
+
+        # Create fresh collection
+        st.session_state.collection = (
+            st.session_state.chroma_client
+            .get_or_create_collection(
+                name="document_collection"
+            )
         )
 
-        st.stop()
+        collection = st.session_state.collection
 
+        # Extract text
+        document_text = extract_text(
+            uploaded_file
+        )
 
-    # Create chunks
-    chunks = create_chunks(document_text)
+        if not document_text.strip():
 
+            st.error(
+                "❌ Could not extract text from this document."
+            )
 
-    st.success(
-        f"✅ Document processed into {len(chunks)} chunks."
-    )
+            st.stop()
 
+        # Create chunks
+        chunks = create_chunks(
+            document_text
+        )
 
-    # ---------------- CREATE DOCUMENT EMBEDDINGS ----------------
+        st.session_state.chunks = chunks
 
-    if "embeddings" not in st.session_state:
+        st.success(
+            f"📄 Uploaded: {uploaded_file.name}"
+        )
+
+        st.success(
+            f"✅ Document processed into {len(chunks)} chunks."
+        )
+
+        # ------------------------------------------------
+        # Create embeddings
+        # ------------------------------------------------
 
         with st.spinner(
             "🧠 Creating document embeddings..."
@@ -143,80 +220,118 @@ if uploaded_file:
 
             for chunk in chunks:
 
-                embedding = create_embedding(chunk)
+                embedding = create_embedding(
+                    chunk
+                )
 
-                embeddings.append(embedding)
+                embeddings.append(
+                    embedding
+                )
 
-            st.session_state.embeddings = embeddings
-            st.session_state.chunks = chunks
+        # ------------------------------------------------
+        # Store embeddings in ChromaDB
+        # ------------------------------------------------
+
+        with st.spinner(
+            "🗄️ Storing vectors in ChromaDB..."
+        ):
+
+            ids = [
+                f"chunk_{i}"
+                for i in range(len(chunks))
+            ]
+
+            collection.add(
+
+                ids=ids,
+
+                documents=chunks,
+
+                embeddings=embeddings
+            )
 
         st.success(
-            "✅ Embeddings created successfully!"
+            "✅ Embeddings stored in ChromaDB!"
+        )
+
+        st.info(
+            f"🗄️ Vector database contains "
+            f"{collection.count()} document chunks."
         )
 
 
-    # ---------------- ASK QUESTION ----------------
+# ==================================================
+# QUESTION ANSWERING
+# ==================================================
+
+if uploaded_file:
 
     question = st.text_input(
         "💬 Ask a question about your document"
     )
 
-
     if question:
 
+        # ------------------------------------------------
+        # Create question embedding
+        # ------------------------------------------------
+
         with st.spinner(
-            "🔎 Searching the document..."
+            "🔎 Searching the vector database..."
         ):
 
-            # Create question embedding
             question_embedding = create_embedding(
                 question
             )
 
+            # ------------------------------------------------
+            # Retrieve relevant chunks
+            # ------------------------------------------------
 
-            # Calculate similarities
-            similarities = []
+            results = collection.query(
 
-            for embedding in st.session_state.embeddings:
+                query_embeddings=[
+                    question_embedding
+                ],
 
-                score = cosine_similarity(
-                    question_embedding,
-                    embedding
+                n_results=min(
+                    3,
+                    collection.count()
                 )
+            )
 
-                similarities.append(score)
-
-
-            # Get top 3 chunks
-            top_indices = np.argsort(
-                similarities
-            )[-3:][::-1]
-
-
-            retrieved_chunks = []
-
-            for index in top_indices:
-
-                retrieved_chunks.append(
-                    st.session_state.chunks[index]
-                )
-
+            retrieved_chunks = (
+                results["documents"][0]
+            )
 
             context = "\n\n".join(
                 retrieved_chunks
             )
 
 
-        # ---------------- DISPLAY RETRIEVED CONTEXT ----------------
+        # ------------------------------------------------
+        # Show retrieved context
+        # ------------------------------------------------
 
         with st.expander(
             "🔎 Retrieved Document Context"
         ):
 
-            st.write(context)
+            for i, chunk in enumerate(
+                retrieved_chunks,
+                start=1
+            ):
+
+                st.markdown(
+                    f"**Retrieved Chunk {i}**"
+                )
+
+                st.write(chunk)
 
 
-        # ---------------- GENERATE ANSWER ----------------
+        # ------------------------------------------------
+        # Generate answer
+        # ------------------------------------------------
 
         with st.spinner(
             "🤖 Generating answer..."
@@ -233,22 +348,29 @@ say:
 
 "I couldn't find the answer in the uploaded document."
 
-Document context:
+DOCUMENT CONTEXT:
 
 {context}
 
-User question:
+USER QUESTION:
 
 {question}
 """
 
-
             response = client.models.generate_content(
+
                 model="gemini-3.6-flash",
+
                 contents=prompt
             )
 
 
+        # ------------------------------------------------
+        # Display answer
+        # ------------------------------------------------
+
         st.subheader("🤖 Answer")
 
-        st.write(response.text)
+        st.write(
+            response.text
+        )

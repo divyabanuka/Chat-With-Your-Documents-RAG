@@ -68,25 +68,6 @@ Document → Text Extraction → Chunking → Embeddings → ChromaDB → Retrie
 9. Final Answer
    Gemini generates an answer using the retrieved document context.
 
-## 📊 Architecture
-
-📄 PDF / TXT Document
-↓
-📖 Text Extraction
-↓
-✂️ Text Chunking
-↓
-🧠 Gemini Embeddings
-↓
-🗄️ ChromaDB Vector Database
-↓
-🔎 Similarity Search
-↓
-📚 Relevant Document Chunks
-↓
-🤖 Gemini LLM
-↓
-💬 Final Answer
 
 ## 📁 Project Structure
 

@@ -68,6 +68,52 @@ Document → Text Extraction → Chunking → Embeddings → ChromaDB → Retrie
 9. Final Answer
    Gemini generates an answer using the retrieved document context.
 
+## 📊 Architecture
+
+📄 PDF / TXT Document
+↓
+📖 Text Extraction
+↓
+✂️ Text Chunking
+↓
+🧠 Gemini Embeddings
+↓
+🗄️ ChromaDB Vector Database
+↓
+🔎 Similarity Search
+↓
+📚 Relevant Document Chunks
+↓
+🤖 Gemini LLM
+↓
+💬 Final Answer
+
+## 📁 Project Structure
+
+Chat-With-Your-Documents-RAG/
+│
+├── app.py
+├── requirements.txt
+├── README.md
+└── project screenshots/
+    ├── Screenshot 1
+    ├── Screenshot 2
+    └── Screenshot 3
+
+## 📸 Project Screenshots
+
+The project screenshots are available in the GitHub repository.
+
+👉 View Project Screenshots:
+./project%20screenshots
+
+The screenshots demonstrate:
+
+- 📄 Document upload
+- ✅ Document processing
+- 🧠 Embeddings creation
+- 🔎 Retrieved document context
+- 🤖 Generated answers
 
 ## ⚙️ Installation
 
@@ -121,24 +167,16 @@ For Streamlit Cloud deployment, add the API key through the application's Secret
 ## 🧪 Example
 
 Document:
+
 Python Programming Course — Week 4 Capstone Project
 
 Question:
+
 What is this document about?
 
 Result:
+
 The application retrieves relevant sections from the document and generates an answer based on the retrieved context.
-
-## 📸 Application Screenshots
-
-The application demonstrates:
-
-- Document upload
-- Document processing
-- Embedding generation
-- ChromaDB vector storage
-- Retrieved document context
-- Generated answer
 
 ## 🎯 Learning Outcomes
 
@@ -182,6 +220,10 @@ Required Pipeline:
 Document → Chunking → Embeddings → Vector DB → Retrieval → LLM → Answer
 
 ## 🌐 Links
+
+Live Application:
+
+https://chat-with-your-documents-rag-pfi2e3qtyscaqywsv2u4op.streamlit.app/
 
 GitHub Repository:
 https://github.com/divyabanuka/Chat-With-Your-Documents-RAG

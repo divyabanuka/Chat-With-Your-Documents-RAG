@@ -69,18 +69,6 @@ Document → Text Extraction → Chunking → Embeddings → ChromaDB → Retrie
    Gemini generates an answer using the retrieved document context.
 
 
-## 📁 Project Structure
-
-Chat-With-Your-Documents-RAG/
-│
-├── app.py
-├── requirements.txt
-├── README.md
-└── project screenshots/
-    ├── Screenshot 1
-    ├── Screenshot 2
-    └── Screenshot 3
-
 ## 📸 Project Screenshots
 
 The project screenshots are available in the GitHub repository.
